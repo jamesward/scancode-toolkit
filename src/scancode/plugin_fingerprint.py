@@ -35,7 +35,7 @@ from plugincode.post_scan import post_scan_impl
 from plugincode.scan import ScanPlugin
 from plugincode.scan import scan_impl
 from scancode import CommandLineOption
-from scancode import SCAN_GROUP
+from scancode import OTHER_SCAN_GROUP
 
 
 @scan_impl
@@ -49,17 +49,17 @@ class FingerprintScanner(ScanPlugin):
         CommandLineOption(('-g', '--fingerprint',),
             is_flag=True, default=False,
             help='Calculate the Halo Hash and Hailstorm fingerprint values for <input>.',
-            help_group=SCAN_GROUP)
+            help_group=OTHER_SCAN_GROUP)
     ]
 
     def is_enabled(self):
         return self.is_command_option_enabled('fingerprint')
 
     def get_scanner(self, **kwargs):
-        return get_fingerprint
+        return get_fingerprints
 
 
-def get_fingerprint(location, **kwargs):
+def get_fingerprints(location, **kwargs):
     """
     Return a list with a single OrderedDict that contains the bit average
     Halo hash and Hailstorm fingerprint values.
@@ -125,7 +125,7 @@ class MerkleTree(PostScanPlugin):
     needs_info = True
 
     def is_enabled(self):
-        return self.is_command_option_enabled('fingerprints')
+        return self.is_command_option_enabled('fingerprint')
 
     def process_codebase(self, codebase, **kwargs):
         """
@@ -142,16 +142,16 @@ class MerkleTree(PostScanPlugin):
                 sha1s = []
                 bah128s = []
                 for child in resource.children():
-                    sha1 = child.sha1
+                    child_sha1 = child.sha1
                     if sha1:
-                        sha1s.append(bytes(sha1))
+                        sha1s.append(bytes(child_sha1))
                     m_sha1 = get_fingerprint_field(child, 'merkle_sha1')
                     if m_sha1:
                         sha1s.append(bytes(m_sha1))
 
-                    bah128 = get_fingerprint_field(child, 'bah128')
-                    if bah128:
-                        bah128s.append(bytes(bah128))
+                    child_bah128 = get_fingerprint_field(child, 'bah128')
+                    if child_bah128:
+                        bah128s.append(bytes(child_bah128))
                     m_bah128 = get_fingerprint_field(child, 'merkle_bah128')
                     if m_bah128:
                         bah128s.append(bytes(m_bah128))
@@ -167,7 +167,7 @@ def get_fingerprint_field(resource, field):
     scans = resource.get_scans()
     if not scans:
         return
-    fingerprints = scans.get('fingerprint', [])
+    fingerprints = scans.get('fingerprints', [])
     if fingerprints:
         fingerprint = fingerprints[0]
         return fingerprint.get(field) or None
@@ -175,12 +175,12 @@ def get_fingerprint_field(resource, field):
 
 def set_fingerprint_field(resource, field, field_value):
     scans = resource.get_scans()
-    fingerprints = scans.get('fingerprint', [])
+    fingerprints = scans.get('fingerprints', [])
     if fingerprints:
         fingerprint = fingerprints[0]
     else:
         fingerprint = OrderedDict()
         fingerprints.append(fingerprint)
     fingerprint[field] = field_value
-    scans['fingerprint'] = fingerprints
+    scans['fingerprints'] = fingerprints
     resource.put_scans(scans)
