@@ -29,6 +29,8 @@ from __future__ import unicode_literals
 
 from collections import OrderedDict
 
+import attr
+
 from commoncode import filetype
 from plugincode.post_scan import PostScanPlugin
 from plugincode.post_scan import post_scan_impl
@@ -43,7 +45,10 @@ class FingerprintScanner(ScanPlugin):
     """
     Calculate the Halo Hash and Hailstorm fingerprint values of a Resource.
     """
-    sort_order = 4
+    attributes = OrderedDict([
+        ('bah128', attr.ib(default=None)),
+        ('hailstorm', attr.ib(default=None)),
+    ])
 
     options = [
         CommandLineOption(('-g', '--fingerprint',),
@@ -52,8 +57,8 @@ class FingerprintScanner(ScanPlugin):
             help_group=OTHER_SCAN_GROUP)
     ]
 
-    def is_enabled(self):
-        return self.is_command_option_enabled('fingerprint')
+    def is_enabled(self, fingerprint, **kwargs):
+        return fingerprint
 
     def get_scanner(self, **kwargs):
         return get_fingerprints
@@ -112,7 +117,7 @@ def get_fingerprints(location, **kwargs):
     fingerprints['bah128'] = bah.hexdigest()
     fingerprints['hailstorm'] = hailstorm.hexdigest()
 
-    return [fingerprints]
+    return fingerprints
 
 
 @post_scan_impl
@@ -121,11 +126,13 @@ class MerkleTree(PostScanPlugin):
     Compute a Merkle fingerprint for each directory using existing SHA1 and
     Bit Average Halo hash values of the directories and files within the codebase
     """
+    attributes = OrderedDict([
+        ('merkle_bah128', attr.ib(default=None)),
+        ('merkle_sha1', attr.ib(default=None)),
+    ])
 
-    needs_info = True
-
-    def is_enabled(self):
-        return self.is_command_option_enabled('fingerprint')
+    def is_enabled(self, fingerprint, info, **kwargs):
+        return fingerprint and info
 
     def process_codebase(self, codebase, **kwargs):
         """
@@ -138,49 +145,23 @@ class MerkleTree(PostScanPlugin):
         # We walk bottom-up to ensure we process the children of directories
         # before we calculate and assign the Merkle fingerprint for directories
         for resource in codebase.walk(topdown=False):
-            if resource.children():
+            if resource.has_children():
                 sha1s = []
                 bah128s = []
-                for child in resource.children():
-                    child_sha1 = child.sha1
-                    if sha1:
-                        sha1s.append(bytes(child_sha1))
-                    m_sha1 = get_fingerprint_field(child, 'merkle_sha1')
-                    if m_sha1:
-                        sha1s.append(bytes(m_sha1))
-
-                    child_bah128 = get_fingerprint_field(child, 'bah128')
+                for child in resource.children(codebase):
+                    child_bah128 = child.bah128
                     if child_bah128:
                         bah128s.append(bytes(child_bah128))
-                    m_bah128 = get_fingerprint_field(child, 'merkle_bah128')
+                    m_bah128 = child.merkle_bah128
                     if m_bah128:
                         bah128s.append(bytes(m_bah128))
 
-                merkle_sha1 = sha1(b''.join(sorted(sha1s))).hexdigest()
-                set_fingerprint_field(resource, 'merkle_sha1', merkle_sha1)
+                    child_sha1 = child.sha1
+                    if sha1:
+                        sha1s.append(bytes(child_sha1))
+                    m_sha1 = child.merkle_sha1
+                    if m_sha1:
+                        sha1s.append(bytes(m_sha1))
 
-                merkle_bah128 = BitAverageHaloHash(b''.join(sorted(bah128s))).hexdigest()
-                set_fingerprint_field(resource, 'merkle_bah128', merkle_bah128)
-
-
-def get_fingerprint_field(resource, field):
-    scans = resource.get_scans()
-    if not scans:
-        return
-    fingerprints = scans.get('fingerprints', [])
-    if fingerprints:
-        fingerprint = fingerprints[0]
-        return fingerprint.get(field) or None
-
-
-def set_fingerprint_field(resource, field, field_value):
-    scans = resource.get_scans()
-    fingerprints = scans.get('fingerprints', [])
-    if fingerprints:
-        fingerprint = fingerprints[0]
-    else:
-        fingerprint = OrderedDict()
-        fingerprints.append(fingerprint)
-    fingerprint[field] = field_value
-    scans['fingerprints'] = fingerprints
-    resource.put_scans(scans)
+                resource.merkle_bah128 = BitAverageHaloHash(b''.join(sorted(bah128s))).hexdigest()
+                resource.merkle_sha1 = sha1(b''.join(sorted(sha1s))).hexdigest()
