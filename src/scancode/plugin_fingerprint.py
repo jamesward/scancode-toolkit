@@ -149,19 +149,15 @@ class MerkleTree(PostScanPlugin):
                 sha1s = []
                 bah128s = []
                 for child in resource.children(codebase):
-                    child_bah128 = child.bah128
-                    if child_bah128:
-                        bah128s.append(bytes(child_bah128))
-                    m_bah128 = child.merkle_bah128
-                    if m_bah128:
-                        bah128s.append(bytes(m_bah128))
+                    if child.bah128:
+                        bah128s.append(bytes(child.bah128))
+                    if child.merkle_bah128:
+                        bah128s.append(bytes(child.merkle_bah128))
 
-                    child_sha1 = child.sha1
-                    if sha1:
-                        sha1s.append(bytes(child_sha1))
-                    m_sha1 = child.merkle_sha1
-                    if m_sha1:
-                        sha1s.append(bytes(m_sha1))
+                    if child.sha1:
+                        sha1s.append(bytes(child.sha1))
+                    if child.merkle_sha1:
+                        sha1s.append(bytes(child.merkle_sha1))
 
                 resource.merkle_bah128 = BitAverageHaloHash(b''.join(sorted(bah128s))).hexdigest()
                 resource.merkle_sha1 = sha1(b''.join(sorted(sha1s))).hexdigest()
