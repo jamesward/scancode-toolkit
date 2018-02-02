@@ -13,9 +13,12 @@ Options:
     -c, --copyright  Scan <input> for copyrights.
 
   other scans:
-    -i, --info   Scan <input> for file information (size, type, checksums, etc).
-    -e, --email  Scan <input> for emails.
-    -u, --url    Scan <input> for urls.
+    -i, --info         Scan <input> for file information (size, type, checksums,
+                       etc).
+    -e, --email        Scan <input> for emails.
+    -g, --fingerprint  Calculate the Halo Hash and Hailstorm fingerprint values
+                       for <input>.
+    -u, --url          Scan <input> for urls.
 
   scan options:
     --license-diag               Include diagnostic information in license scan
