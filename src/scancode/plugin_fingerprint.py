@@ -76,48 +76,46 @@ def get_fingerprints(location, **kwargs):
     chunk_size = 1024
     ngram_length = 4
 
-    if not filetype.is_file(location):
-        return []
+    if filetype.is_file(location):
+        bah = BitAverageHaloHash()
+        slices = []
+        with open(location, 'rb') as f:
+            first_chunk = None
+            last_processed_chunk = None
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
 
-    bah = BitAverageHaloHash()
-    slices = []
-    with open(location, 'rb') as f:
-        first_chunk = None
-        last_processed_chunk = None
-        while True:
-            chunk = f.read(chunk_size)
-            if not chunk:
-                break
+                # We keep track of the first and last chunk to ensure that the
+                # first and last ngrams are selected
+                if not first_chunk:
+                    first_chunk = chunk
+                last_processed_chunk = chunk
 
-            # We keep track of the first and last chunk to ensure that the
-            # first and last ngrams are selected
-            if not first_chunk:
-                first_chunk = chunk
-            last_processed_chunk = chunk
+                # Process data
+                bah.update(chunk)
+                slices.extend(ngrams(chunk, ngram_length))
 
-            # Process data
-            bah.update(chunk)
-            slices.extend(ngrams(chunk, ngram_length))
+        selected_slices = list(select_ngrams(slices))
 
-    selected_slices = list(select_ngrams(slices))
+        # Check to see if the first and last ngrams were selected,
+        # as stipulated in the Hailstorm algorithm
+        first_ngram = list(ngrams(first_chunk, ngram_length))[0]
+        last_ngram = list(ngrams(last_processed_chunk, ngram_length))[-1]
+        assert first_ngram == selected_slices[0]
+        assert last_ngram == selected_slices[-1]
 
-    # Check to see if the first and last ngrams were selected,
-    # as stipulated in the Hailstorm algorithm
-    first_ngram = list(ngrams(first_chunk, ngram_length))[0]
-    last_ngram = list(ngrams(last_processed_chunk, ngram_length))[-1]
-    assert first_ngram == selected_slices[0]
-    assert last_ngram == selected_slices[-1]
+        # Join slices together as a single bytestring
+        hashable = b''.join(b''.join(slice) for slice in selected_slices)
+        hailstorm = BitAverageHaloHash(hashable)
 
-    # Join slices together as a single bytestring
-    hashable = b''.join(b''.join(slice) for slice in selected_slices)
-    hailstorm = BitAverageHaloHash(hashable)
+        # Set values
+        fingerprints = OrderedDict()
+        fingerprints['bah128'] = bah.hexdigest()
+        fingerprints['hailstorm'] = hailstorm.hexdigest()
 
-    # Set values
-    fingerprints = OrderedDict()
-    fingerprints['bah128'] = bah.hexdigest()
-    fingerprints['hailstorm'] = hailstorm.hexdigest()
-
-    return fingerprints
+        return fingerprints
 
 
 @post_scan_impl
