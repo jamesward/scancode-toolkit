@@ -53,6 +53,7 @@ class FingerprintScanner(ScanPlugin):
     options = [
         CommandLineOption(('-g', '--fingerprint',),
             is_flag=True, default=False,
+            requires=['info'],
             help='Calculate the Halo Hash and Hailstorm fingerprint values for <input>.',
             help_group=OTHER_SCAN_GROUP)
     ]

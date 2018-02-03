@@ -30,6 +30,7 @@ from os.path import join
 
 from commoncode.testcase import FileDrivenTesting
 from scancode.cli_test_utils import check_json_scan
+from scancode.cli_test_utils import load_json_result
 from scancode.cli_test_utils import run_scan_click
 
 from plugincode import output
@@ -44,6 +45,12 @@ class TestFingerprint(FileDrivenTesting):
         test_dir = self.extract_test_tar('plugin_fingerprint/dust.js-0.1.0.tgz')
         result_file = self.get_temp_file('json')
         expected_file = self.get_test_loc('plugin_fingerprint/expected.json')
+        expected_results = load_json_result(expected_file)
 
-        _result = run_scan_click(['-ig', test_dir, '--json', result_file])
-        check_json_scan(expected_file, result_file, regen=False)
+        run_scan_click(['-ig', test_dir, '--json', result_file])
+        results = load_json_result(result_file)
+
+        for expected_result, result in zip(expected_results['files'], results['files']):
+            assert expected_result.get('bah128') == result.get('bah128')
+            assert expected_result.get('merkle_bah128') == result.get('merkle_bah128')
+            assert expected_result.get('merkle_sha1') == result.get('merkle_sha1')
