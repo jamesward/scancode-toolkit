@@ -81,18 +81,10 @@ def get_fingerprints(location, **kwargs):
         bah = BitAverageHaloHash()
         slices = []
         with open(location, 'rb') as f:
-            first_chunk = None
-            last_processed_chunk = None
             while True:
                 chunk = f.read(chunk_size)
                 if not chunk:
                     break
-
-                # We keep track of the first and last chunk to ensure that the
-                # first and last ngrams are selected
-                if not first_chunk:
-                    first_chunk = chunk
-                last_processed_chunk = chunk
 
                 # Process data
                 bah.update(chunk)
@@ -102,10 +94,8 @@ def get_fingerprints(location, **kwargs):
 
         # Check to see if the first and last ngrams were selected,
         # as stipulated in the Hailstorm algorithm
-        first_ngram = list(ngrams(first_chunk, ngram_length))[0]
-        last_ngram = list(ngrams(last_processed_chunk, ngram_length))[-1]
-        assert first_ngram == selected_slices[0]
-        assert last_ngram == selected_slices[-1]
+        assert slices[0] == selected_slices[0]
+        assert slices[-1] == selected_slices[-1]
 
         # Join slices together as a single bytestring
         hashable = b''.join(b''.join(slice) for slice in selected_slices)
