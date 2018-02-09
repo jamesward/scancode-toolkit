@@ -78,6 +78,7 @@ def get_fingerprints(location, **kwargs):
     ngram_length = 4
 
     if filetype.is_file(location):
+        fingerprints = OrderedDict()
         bah = BitAverageHaloHash()
         slices = []
         with open(location, 'rb') as f:
@@ -90,21 +91,23 @@ def get_fingerprints(location, **kwargs):
                 bah.update(chunk)
                 slices.extend(ngrams(chunk, ngram_length))
 
-        selected_slices = list(select_ngrams(slices))
+        bah_digest = bah.hexdigest()
+        if bah_digest:
+            fingerprints['bah128'] = bah_digest
 
-        # Check to see if the first and last ngrams were selected,
-        # as stipulated in the Hailstorm algorithm
-        assert slices[0] == selected_slices[0]
-        assert slices[-1] == selected_slices[-1]
+        if slices:
+            selected_slices = list(select_ngrams(slices))
 
-        # Join slices together as a single bytestring
-        hashable = b''.join(b''.join(slice) for slice in selected_slices)
-        hailstorm = BitAverageHaloHash(hashable)
+            # Check to see if the first and last ngrams were selected,
+            # as stipulated in the Hailstorm algorithm
+            assert slices[0] == selected_slices[0]
+            assert slices[-1] == selected_slices[-1]
 
-        # Set values
-        fingerprints = OrderedDict()
-        fingerprints['bah128'] = bah.hexdigest()
-        fingerprints['hailstorm'] = hailstorm.hexdigest()
+            # Join slices together as a single bytestring
+            hashable = b''.join(b''.join(slice) for slice in selected_slices)
+            hailstorm = BitAverageHaloHash(hashable)
+
+            fingerprints['hailstorm'] = hailstorm.hexdigest()
 
         return fingerprints
 
