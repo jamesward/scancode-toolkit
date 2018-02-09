@@ -52,5 +52,19 @@ class TestFingerprint(FileDrivenTesting):
 
         for expected_result, result in zip(expected_results['files'], results['files']):
             assert expected_result.get('bah128') == result.get('bah128')
+            assert expected_result.get('hailstorm') == result.get('hailstorm')
             assert expected_result.get('merkle_bah128') == result.get('merkle_bah128')
             assert expected_result.get('merkle_sha1') == result.get('merkle_sha1')
+
+    def test_scan_fingerprint_empty_file(self):
+        empty_file = self.get_test_loc('plugin_fingerprint/empty')
+        result_file = self.get_temp_file('result_file')
+
+        run_scan_click(['-ig', empty_file, '--json', result_file])
+
+        results = load_json_result(result_file)
+        for result in results['files']:
+            assert result.get('bah128') is None
+            assert result.get('hailstorm') is None
+            assert result.get('merkle_bah128') is None
+            assert result.get('merkle_sha1') is None
